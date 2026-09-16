@@ -1,206 +1,378 @@
 import json
 import os
+from datetime import datetime
 
-# Name of the file where expenses will be stored
-FILE_NAME = "expenses.json"
+FILE_NAME = "transactions.json"
 
 
-def load_expenses():
-    """Load saved expenses from the JSON file."""
+# -----------------------------
+# Load Transactions
+# -----------------------------
+def load_transactions():
+    """Load saved transactions from JSON file."""
 
-    # Check if the file exists
     if not os.path.exists(FILE_NAME):
         return []
 
     try:
-        # Open the file and convert JSON data into Python objects
         with open(FILE_NAME, "r") as file:
             return json.load(file)
 
-    # If the file is empty or contains invalid JSON
     except (json.JSONDecodeError, FileNotFoundError):
         return []
 
 
-def save_expenses(expenses):
-    """Save the current expenses to the JSON file."""
+# -----------------------------
+# Save Transactions
+# -----------------------------
+def save_transactions(transactions):
+    """Save transactions to JSON file."""
 
-    # Open the file in write mode
     with open(FILE_NAME, "w") as file:
-        # Convert Python data into JSON format
-        json.dump(expenses, file, indent=4)
+        json.dump(transactions, file, indent=4)
 
 
-def add_expense(expenses):
-    """Add a new expense to the expense list."""
+# -----------------------------
+# Add Income
+# -----------------------------
+def add_income(transactions):
+    """Add a new income transaction."""
 
-    # Get expense details from the user
+    source = input("Enter income source: ")
+
+    try:
+        amount = float(input("Enter income amount: ₹"))
+
+        if amount <= 0:
+            print("❌ Amount must be greater than 0.")
+            return
+
+    except ValueError:
+        print("❌ Invalid amount.")
+        return
+
+    date = input(
+        "Enter date (YYYY-MM-DD) or press Enter for today's date: "
+    )
+
+    if not date:
+        date = datetime.now().strftime("%Y-%m-%d")
+
+    try:
+        datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        print("❌ Invalid date format.")
+        return
+
+    income = {
+        "type": "income",
+        "name": source,
+        "amount": amount,
+        "category": "Income",
+        "date": date
+    }
+
+    transactions.append(income)
+    save_transactions(transactions)
+
+    print("✅ Income added successfully!")
+
+
+# -----------------------------
+# Add Expense
+# -----------------------------
+def add_expense(transactions):
+    """Add a new expense transaction."""
+
     name = input("Enter expense name: ")
 
     try:
-        # Convert the entered amount from string to float
-        amount = float(input("Enter amount: ₹"))
+        amount = float(input("Enter expense amount: ₹"))
+
+        if amount <= 0:
+            print("❌ Amount must be greater than 0.")
+            return
 
     except ValueError:
-        # Handle invalid amount input
-        print("Invalid amount.")
+        print("❌ Invalid amount.")
         return
 
     category = input("Enter category: ")
 
-    # Create a dictionary containing the expense information
+    date = input(
+        "Enter date (YYYY-MM-DD) or press Enter for today's date: "
+    )
+
+    if not date:
+        date = datetime.now().strftime("%Y-%m-%d")
+
+    try:
+        datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        print("❌ Invalid date format.")
+        return
+
     expense = {
+        "type": "expense",
         "name": name,
         "amount": amount,
-        "category": category
+        "category": category,
+        "date": date
     }
 
-    # Add the new expense to the list
-    expenses.append(expense)
-
-    # Save the updated list to the JSON file
-    save_expenses(expenses)
+    transactions.append(expense)
+    save_transactions(transactions)
 
     print("✅ Expense added successfully!")
 
 
-def view_expenses(expenses):
-    """Display all saved expenses."""
+# -----------------------------
+# View Transactions
+# -----------------------------
+def view_transactions(transactions):
+    """Display all transactions."""
 
-    # Check if there are no expenses
-    if not expenses:
-        print("No expenses found.")
+    if not transactions:
+        print("\n❌ No transactions found.")
         return
 
-    print("\n------ All Expenses ------")
+    print("\n========== TRANSACTIONS ==========")
 
-    # enumerate() gives both the index and the expense
-    for index, expense in enumerate(expenses, start=1):
+    for index, transaction in enumerate(transactions, start=1):
+
+        transaction_type = transaction["type"].upper()
 
         print(
-            f"{index}. {expense['name']} | "
-            f"₹{expense['amount']:.2f} | "
-            f"{expense['category']}"
+            f"{index}. "
+            f"{transaction['date']} | "
+            f"{transaction_type} | "
+            f"{transaction['name']} | "
+            f"₹{transaction['amount']:.2f} | "
+            f"{transaction['category']}"
         )
 
 
-def show_total(expenses):
-    """Calculate and display the total amount spent."""
+# -----------------------------
+# Total Income
+# -----------------------------
+def total_income(transactions):
+    """Calculate total income."""
 
-    # Add the amount of every expense
-    total = sum(expense["amount"] for expense in expenses)
+    income = sum(
+        transaction["amount"]
+        for transaction in transactions
+        if transaction["type"] == "income"
+    )
 
-    print(f"\n💰 Total Expenses: ₹{total:.2f}")
+    return income
 
 
-def category_summary(expenses):
-    """Display total spending for each category."""
+# -----------------------------
+# Total Expenses
+# -----------------------------
+def total_expenses(transactions):
+    """Calculate total expenses."""
 
-    if not expenses:
-        print("No expenses found.")
+    expenses = sum(
+        transaction["amount"]
+        for transaction in transactions
+        if transaction["type"] == "expense"
+    )
+
+    return expenses
+
+
+# -----------------------------
+# Savings
+# -----------------------------
+def calculate_savings(transactions):
+    """Calculate savings."""
+
+    income = total_income(transactions)
+    expenses = total_expenses(transactions)
+
+    return income - expenses
+
+
+# -----------------------------
+# Category-wise Spending
+# -----------------------------
+def category_wise_spending(transactions):
+    """Calculate expenses for each category."""
+
+    if not transactions:
+        print("\n❌ No transactions found.")
         return
 
-    # Dictionary to store total amount for each category
-    summary = {}
+    categories = {}
 
-    # Go through every expense
-    for expense in expenses:
-        category = expense["category"]
+    for transaction in transactions:
 
-        # Create the category if it doesn't exist
-        if category not in summary:
-            summary[category] = 0
+        if transaction["type"] == "expense":
 
-        # Add the expense amount to that category
-        summary[category] += expense["amount"]
+            category = transaction["category"]
 
-    print("\n------ Category Summary ------")
+            if category not in categories:
+                categories[category] = 0
 
-    # Display each category and its total amount
-    for category, amount in summary.items():
-        print(f"{category}: ₹{amount:.2f}")
+            categories[category] += transaction["amount"]
+
+    if not categories:
+        print("\n❌ No expenses found.")
+        return
+
+    print("\n========== CATEGORY-WISE SPENDING ==========")
+
+    for category, amount in categories.items():
+        print(f"{category:<20} ₹{amount:.2f}")
 
 
-def delete_expense(expenses):
-    """Delete an expense using its number."""
+# -----------------------------
+# Monthly Spending
+# -----------------------------
+def monthly_spending(transactions):
+    """Calculate expenses month-wise."""
 
-    # Display the current expenses first
-    view_expenses(expenses)
+    if not transactions:
+        print("\n❌ No transactions found.")
+        return
 
-    if not expenses:
+    monthly = {}
+
+    for transaction in transactions:
+
+        if transaction["type"] == "expense":
+
+            month = transaction["date"][:7]
+
+            if month not in monthly:
+                monthly[month] = 0
+
+            monthly[month] += transaction["amount"]
+
+    if not monthly:
+        print("\n❌ No expenses found.")
+        return
+
+    print("\n========== MONTHLY SPENDING ==========")
+
+    for month, amount in sorted(monthly.items()):
+        print(f"{month} : ₹{amount:.2f}")
+
+
+# -----------------------------
+# Financial Dashboard
+# -----------------------------
+def dashboard(transactions):
+    """Display complete financial summary."""
+
+    income = total_income(transactions)
+    expenses = total_expenses(transactions)
+    savings = calculate_savings(transactions)
+
+    print("\n======================================")
+    print("          FINANCIAL DASHBOARD")
+    print("======================================")
+
+    print(f"💰 Total Income     : ₹{income:.2f}")
+    print(f"💸 Total Expenses   : ₹{expenses:.2f}")
+    print(f"💵 Total Savings    : ₹{savings:.2f}")
+
+    if income > 0:
+        saving_percentage = (savings / income) * 100
+        print(f"📊 Saving Rate      : {saving_percentage:.2f}%")
+
+    print("======================================")
+
+
+# -----------------------------
+# Delete Transaction
+# -----------------------------
+def delete_transaction(transactions):
+    """Delete a transaction."""
+
+    view_transactions(transactions)
+
+    if not transactions:
         return
 
     try:
-        # Ask the user which expense should be deleted
-        number = int(input("\nEnter expense number to delete: "))
+        number = int(input("\nEnter transaction number to delete: "))
 
-        # Check whether the selected number is valid
-        if 1 <= number <= len(expenses):
+        if 1 <= number <= len(transactions):
 
-            # Remove the selected expense
-            deleted = expenses.pop(number - 1)
+            deleted = transactions.pop(number - 1)
 
-            # Save the updated list
-            save_expenses(expenses)
+            save_transactions(transactions)
 
-            print(f"🗑️ Deleted: {deleted['name']}")
+            print(
+                f"🗑️ Deleted: "
+                f"{deleted['name']} - "
+                f"₹{deleted['amount']:.2f}"
+            )
 
         else:
-            print("Invalid expense number.")
+            print("❌ Invalid transaction number.")
 
     except ValueError:
-        # Handle non-numeric input
-        print("Please enter a valid number.")
+        print("❌ Please enter a valid number.")
 
 
+# -----------------------------
+# Main Menu
+# -----------------------------
 def main():
-    """Main function that runs the Expense Tracker."""
 
-    # Load previously saved expenses
-    expenses = load_expenses()
+    transactions = load_transactions()
 
-    # Keep showing the menu until the user exits
     while True:
 
-        print("\n============================")
-        print("       EXPENSE TRACKER")
-        print("============================")
-        print("1. Add Expense")
-        print("2. View Expenses")
-        print("3. Show Total")
-        print("4. Category Summary")
-        print("5. Delete Expense")
-        print("6. Exit")
+        print("\n======================================")
+        print("       SMART EXPENSE TRACKER")
+        print("======================================")
 
-        # Ask the user to select an option
+        print("1. Add Income")
+        print("2. Add Expense")
+        print("3. View Transactions")
+        print("4. Financial Dashboard")
+        print("5. Category-wise Spending")
+        print("6. Monthly Spending")
+        print("7. Delete Transaction")
+        print("8. Exit")
+
         choice = input("\nEnter your choice: ")
 
-        # Perform the selected operation
         if choice == "1":
-            add_expense(expenses)
+            add_income(transactions)
 
         elif choice == "2":
-            view_expenses(expenses)
+            add_expense(transactions)
 
         elif choice == "3":
-            show_total(expenses)
+            view_transactions(transactions)
 
         elif choice == "4":
-            category_summary(expenses)
+            dashboard(transactions)
 
         elif choice == "5":
-            delete_expense(expenses)
+            category_wise_spending(transactions)
 
         elif choice == "6":
-            print("Thank you for using Expense Tracker! 👋")
+            monthly_spending(transactions)
+
+        elif choice == "7":
+            delete_transaction(transactions)
+
+        elif choice == "8":
+            print("\nThank you for using Smart Expense Tracker! 👋")
             break
 
         else:
-            # Handle invalid menu choices
             print("❌ Invalid choice. Please try again.")
 
 
-# Start the program
-# This ensures main() runs only when this file is executed directly
+# -----------------------------
+# Start Program
+# -----------------------------
 if __name__ == "__main__":
     main()
