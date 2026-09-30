@@ -2,7 +2,7 @@ import json
 import os
 from datetime import datetime
 
-FILE_NAME = "transactions.json"
+FILE_NAME = "smart_expense_data.json"
 
 
 # -----------------------------
